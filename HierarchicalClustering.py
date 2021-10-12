@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
+import pandas as pd
 
 f=open("Info.txt", "w")
 
@@ -49,14 +50,9 @@ def mergeClusters(c1,c2):
 
     for i in range(0,len(c1i)):
         c3.addIntances(c1i[i])
-        f.write("Instance:"+str(c1i[i].getId())+"//"+str(c1i[i].getAttrVector()[0])+"-"+str(c1i[i].getAttrVector()[1]))
-        f.write("\n")
     for j in range(0,len(c2i)):
         c3.addIntances(c2i[j])
-        f.write("Instance:"+str(c2i[j].getId())+"//"+str(c2i[j].getAttrVector()[0])+"-"+str(c2i[j].getAttrVector()[1]))
-        f.write("\n")
-    f.write("Nuevo centroide"+str(c3.getCentroid()))
-    f.write("\n")
+
     return c3
 
 #Clase instancia que guarda el numero de instancia y el vector de atributos
@@ -66,8 +62,6 @@ def clusterDistance(c1,c2):
     "Average-Link"
     cc1=c1.getCentroid()
     cc2=c2.getCentroid()
-    f.write("C1: "+str(cc1)+"  C2: "+str(cc2)+" == "+str(distance.minkowski(cc1,cc2,1)))
-    f.write("\n")
     return distance.minkowski(cc1,cc2,1)
 
 def flatVector(vec):
@@ -116,17 +110,24 @@ def deleteClusters(distanceMatrix,i,j):
 
     return distanceMatrix
 
+def printableCluster(clustersArray):
+    vec=" ;"
+    for i in range(0,len(clustersArray)):
+        ins=clustersArray[i].getInstances()
+        vec+="{"
+        for j in range(0,len(ins)):
+            if j!=0:vec+=","
+            vec+=str(ins[j].getId())
+        vec+="};"
+
+    return vec
+
 def clustersToArray(nInstances,clustersArray):
     rst=np.zeros(nInstances, dtype=int)
     for i in range(0,len(clustersArray)):
         instArr=clustersArray[i].getInstances()
-        f.write("CLUSTER: "+str(i))
-        f.write("\n")
-        f.write("Numero de instancias: "+str(len(instArr)))
-        f.write("\n")
+
         for j in range(0,len(instArr)):
-            f.write(str(instArr[j].getId()))
-            f.write("\n")
             rst[instArr[j].getId()]=i
 
 
@@ -151,19 +152,15 @@ def HierarchicalClustering(n_clusters,instances):
  #Calculamos las matriz de distancia entre clusters
  distMatrix=createDistanceMatrix(clusterArray)
 
- printMatrix(distMatrix)
- f.write("\n")
- ih=0
+ itr=0
  #Empieza a iterar hasta que obtengamos el numero de clusters deseados
  while len(clusterArray)>n_clusters:
-     f.write("Iteracion: "+str(ih)+" // Len(clusterArray)="+str(len(clusterArray)))
-     f.write("\n")
-     ih+=1
+
+     itr+=1
 
      #Usamos la matriz de distancias para calcular los 2 clusters mas proximos
      minPos=findMin(distMatrix)
-     f.write("Minimun: "+str(minPos[0])+"-"+str(minPos[1]))
-     f.write("\n")
+     dMik=distMatrix[minPos[0],minPos[1]]
      c1=clusterArray[minPos[0]]
      c2 = clusterArray[minPos[1]]
      #Creamos el cluster c1 U c2
@@ -184,15 +181,16 @@ def HierarchicalClustering(n_clusters,instances):
      distMatrix = np.insert(distMatrix, distMatrix.shape[1], np.zeros(len(distMatrix)), 1)
 
      #Calcular las nuevas distancias y las añadimos
-     f.write("C3="+str(c3.getCentroid()))
-     f.write("\n")
+
      for i in range(0,len(distMatrix)):
 
          distMatrix[i,len(distMatrix)-1]=clusterDistance(clusterArray[i],c3)
-
-     printMatrix(distMatrix)
+     #Escribimo en el fichero de ClusteringInfo
+     f.write("Iteration= "+str(itr)+", NumClusters: "+str(len(clusterArray))+", Silhouette: ?,"+", DisMikwoski used in Iteration: "+str(dMik)+printableCluster(clusterArray))
      f.write("\n")
- rst=clustersToArray(nInstances, clusterArray)
+
+ f.close()
+ rst=clusterArray
 
  return rst
 
@@ -207,18 +205,47 @@ def plotClustering(instances,clusterArray):
     plt.scatter(instances[:, 0], instances[:, 1], c=clusterArray, cmap='rainbow')
     plt.show()
 
+def saveModel(textsArray, attrArray,clusterLabels ):
+    data={
+        "Text":textsArray,
+        "Attributes":attrArray,
+        "Cluster":clusterLabels
+    }
+    df=pd.DataFrame(data,columns=["Text","Attributes","Cluster"])
+    df.to_csv("Model.csv")
+    return True
 
-X = np.array([[5, 3],
+def loadModel(modelPath):
+    return True
+
+def calculateInstance(model, instance):
+    return True
+#ESTRUCTURA RECIBIDA--> Array con ["Texto","Vector con texto convertido en numeros"
+X = np.array([
+                    [5, 3],
                   [10, 15],
                   [15, 12],
                   [24, 10],
                   [30, 30],
                   [85, 70],
                   [71, 80],
-                  [60, 78],
+                [60, 78],
                   [70, 55],
                   [80, 91], ])
+intanceText=np.array(["ONE",
+                  "TWO",
+                  "THREE",
+                  "FOUR",
+                  "FIVE",
+                  "SIX",
+                  "SEVEN",
+                  "EIGHT",
+                  "NINE",
+                  "TEN",])
 
 cluster=HierarchicalClustering(2,X)
-f.close()
-plotClustering(X,cluster)
+
+labels=clustersToArray(len(X), cluster)
+np.savetxt("prueba.txt",intanceText,delimiter=",")
+#saveModel(intanceText,X,labels)
+#plotClustering(X,cluster)
